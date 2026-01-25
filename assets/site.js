@@ -1,32 +1,19 @@
-// Подсветка активной страницы + мелкие утилиты
 (() => {
-  const path = location.pathname.split("/").pop() || "index.html";
-  document.querySelectorAll("[data-nav]").forEach(a => {
-    if (a.getAttribute("href") === path) {
-      a.classList.remove("btn-ghost");
-      a.classList.add("btn");
-    }
+  const burger = document.getElementById("burgerBtn");
+  const nav = document.getElementById("nav");
+  if (!burger || !nav) return;
+
+  burger.addEventListener("click", () => nav.classList.toggle("open"));
+
+  // закрыть меню при клике по ссылке
+  nav.querySelectorAll("a").forEach(a => {
+    a.addEventListener("click", () => nav.classList.remove("open"));
   });
 
-  // Кнопка копировать email (если есть)
-  const copyBtn = document.getElementById("copyEmailBtn");
-  if (copyBtn) {
-    copyBtn.addEventListener("click", async () => {
-      const email = copyBtn.dataset.email;
-      try {
-        await navigator.clipboard.writeText(email);
-        showToast("Скопировано: " + email);
-      } catch {
-        showToast("Не удалось скопировать. Email: " + email);
-      }
-    });
-  }
-
-  function showToast(text){
-    const t = document.getElementById("toast");
-    if (!t) return;
-    t.textContent = text;
-    t.classList.add("show");
-    setTimeout(() => t.classList.remove("show"), 2200);
-  }
+  // закрыть при клике вне меню
+  document.addEventListener("click", (e) => {
+    if (!nav.classList.contains("open")) return;
+    if (nav.contains(e.target) || burger.contains(e.target)) return;
+    nav.classList.remove("open");
+  });
 })();
