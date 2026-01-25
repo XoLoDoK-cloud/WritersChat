@@ -2,90 +2,112 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>BudgetCart — умный список покупок по бюджету</title>
-  <link rel="stylesheet" href="assets/style.css" />
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <nav class="nav">
-    <div class="nav-inner">
-      <a class="brand" href="index.html">
-        <span class="logo"></span>
-        <span>BudgetCart</span>
-      </a>
-      <div class="menu">
-        <a data-nav class="btn-ghost btn" href="index.html">Главная</a>
-        <a data-nav class="btn-ghost btn" href="app.html">Приложение</a>
-        <a data-nav class="btn-ghost btn" href="about.html">О проекте</a>
-        <a data-nav class="btn-ghost btn" href="contacts.html">Контакты</a>
-      </div>
-    </div>
-  </nav>
+  <header class="topbar">
+    <a class="brand" href="index.html">
+      <span class="brand-mark">BC</span>
+      <span class="brand-text">BudgetCart</span>
+    </a>
 
-  <main class="container">
+    <button class="burger" id="burgerBtn" aria-label="Открыть меню">☰</button>
+
+    <nav class="nav" id="nav">
+      <a href="index.html" class="active">Главная</a>
+      <a href="app.html">Приложение</a>
+      <a href="about.html">О проекте</a>
+    </nav>
+
+    <a class="btn small" href="app.html">Открыть приложение</a>
+  </header>
+
+  <main class="page">
     <section class="hero">
-      <div class="card">
-        <span class="pill">Веб-сайт + приложение</span>
-        <h1>Покупай по плану,<br/>а не по настроению</h1>
-        <p>
-          BudgetCart помогает уложиться в бюджет: ты задаёшь сумму, добавляешь товары, а сайт
-          показывает итог, остаток и подсказки для экономии.
+      <div class="hero-text">
+        <h1>Покупай по плану, а не по настроению.</h1>
+        <p class="lead">
+          <b>BudgetCart</b> помогает уложиться в бюджет: веди список покупок,
+          отмечай купленное, смотри сколько осталось и где перерасход.
         </p>
 
-        <div class="kpi">
-          <span class="pill">✅ localStorage</span>
-          <span class="pill">✅ сортировка/поиск</span>
-          <span class="pill">✅ режим “в магазине”</span>
-          <span class="pill">✅ советы по экономии</span>
+        <div class="hero-actions">
+          <a class="btn" href="app.html">Начать</a>
+          <a class="btn ghost" href="#features">Что умеет</a>
         </div>
 
-        <hr class="sep" />
-
-        <div style="display:flex; gap:10px; flex-wrap:wrap;">
-          <a class="btn" href="app.html">Открыть приложение</a>
-          <a class="btn-ghost btn" href="about.html">Как работает</a>
+        <div class="badges">
+          <span class="chip">Без регистрации</span>
+          <span class="chip">Сохраняется на устройстве</span>
+          <span class="chip">Работает офлайн (локально)</span>
         </div>
       </div>
 
-      <div class="card">
-        <h2>Как это выглядит</h2>
-        <p>
-          Это “настоящий” продукт: отдельные страницы, навигация, единый стиль,
-          и внутри — полноценный инструмент списка покупок.
-        </p>
-        <hr class="sep" />
-        <h3>Для кого</h3>
-        <p>• школьники/студенты • семья • любой, кто хочет контролировать траты</p>
-        <hr class="sep" />
-        <h3>Пример</h3>
-        <p>Бюджет: 20£ → корзина на неделю → видно, где перерасход и что убрать первым.</p>
-      </div>
-    </section>
-
-    <section class="card" style="margin-top:14px;">
-      <h2>Почему это полезно</h2>
-      <div class="grid">
-        <div class="card">
-          <h3>Контроль бюджета</h3>
-          <p>Сразу видно: сколько потрачено и сколько осталось.</p>
-        </div>
-        <div class="card">
-          <h3>Порядок в покупках</h3>
-          <p>Категории/магазины, чекбоксы, фильтры — ничего не забываешь.</p>
-        </div>
-        <div class="card">
-          <h3>Экономия</h3>
-          <p>Если вышел за бюджет — покажет самые дорогие позиции.</p>
+      <div class="hero-card">
+        <div class="mini">
+          <div class="mini-row">
+            <div class="mini-title">Бюджет</div>
+            <div class="mini-val">20.00 £</div>
+          </div>
+          <div class="mini-row">
+            <div class="mini-title">Потрачено</div>
+            <div class="mini-val">12.40 £</div>
+          </div>
+          <div class="mini-row">
+            <div class="mini-title">Осталось</div>
+            <div class="mini-val ok">7.60 £</div>
+          </div>
+          <div class="mini-note">Всё считается автоматически</div>
         </div>
       </div>
     </section>
 
-    <footer class="footer">
-      <span>© BudgetCart</span>
-      <span>Данные сохраняются на устройстве (без сервера).</span>
-    </footer>
+    <section id="features" class="section">
+      <h2>Возможности</h2>
+      <div class="grid3">
+        <div class="card">
+          <h3>Бюджет и остаток</h3>
+          <p>Вводишь бюджет — сайт показывает потрачено и сколько осталось.</p>
+        </div>
+        <div class="card">
+          <h3>Список покупок</h3>
+          <p>Добавляй товары, отмечай купленные, удаляй, редактируй цену.</p>
+        </div>
+        <div class="card">
+          <h3>Фильтры и сортировка</h3>
+          <p>Поиск, сортировка по цене/названию и фильтр “нужно/куплено”.</p>
+        </div>
+        <div class="card">
+          <h3>Группировка</h3>
+          <p>Список можно группировать по категориям или магазинам.</p>
+        </div>
+        <div class="card">
+          <h3>Подсказки экономии</h3>
+          <p>Если перерасход — показывает самые дорогие позиции для оптимизации.</p>
+        </div>
+        <div class="card">
+          <h3>Сохранение</h3>
+          <p>Данные сохраняются в браузере (localStorage). Ничего не теряется.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section cta">
+      <div>
+        <h2>Готов начать?</h2>
+        <p class="lead">Открой приложение и собери свою корзину по бюджету.</p>
+      </div>
+      <a class="btn" href="app.html">Перейти в BudgetCart</a>
+    </section>
   </main>
 
-  <script src="assets/site.js"></script>
+  <footer class="footer">
+    <div>© BudgetCart</div>
+    <div class="muted">Учебный проект — сайт + приложение</div>
+  </footer>
+
+  <script src="site.js"></script>
 </body>
 </html>
