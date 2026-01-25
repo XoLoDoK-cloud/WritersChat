@@ -1,3 +1,3 @@
 User-agent: *
 Allow: /
-Sitemap: https://ТВОЙ_НИК.github.io/budgetcart/sitemap.xml
+Sitemap: https://XoLoDoK-cloud.github.io/budgetcart/sitemap.xml
