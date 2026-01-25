@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BudgetCart — приложение</title>
+  <link rel="stylesheet" href="assets/style.css" />
+</head>
+<body>
+  <nav class="nav">
+    <div class="nav-inner">
+      <a class="brand" href="index.html">
+        <span class="logo"></span>
+        <span>BudgetCart</span>
+      </a>
+      <div class="menu">
+        <a data-nav class="btn-ghost btn" href="index.html">Главная</a>
+        <a data-nav class="btn-ghost btn" href="app.html">Приложение</a>
+        <a data-nav class="btn-ghost btn" href="about.html">О проекте</a>
+        <a data-nav class="btn-ghost btn" href="contacts.html">Контакты</a>
+      </div>
+    </div>
+  </nav>
+
+  <main class="container">
+    <section class="card">
+      <h2>Приложение BudgetCart</h2>
+      <p>Задай бюджет, добавь товары и отмечай купленное. Всё сохранится на этом устройстве.</p>
+    </section>
+
+    <!-- ВСТАВЛЯЕМ НАШ APP UI (чуть упрощено и “вписано” в сайт) -->
+    <section class="card" id="appRoot">
+      <div class="grid" style="grid-template-columns: repeat(3, 1fr);">
+        <div class="card">
+          <h3>Бюджет</h3>
+          <input id="budgetInput" class="input" type="number" min="0" step="0.01" placeholder="Напр. 20" />
+          <div class="small">Валюта условная (сейчас £).</div>
+        </div>
+        <div class="card">
+          <h3>Потрачено</h3>
+          <div id="spentValue" style="font-size:28px; font-weight:900;">0.00 £</div>
+          <div class="small">Можно считать только по купленным.</div>
+        </div>
+        <div class="card">
+          <h3>Осталось</h3>
+          <div id="leftValue" style="font-size:28px; font-weight:900;">0.00 £</div>
+          <div id="statusBadge" class="pill" style="margin-top:10px;">Готово</div>
+        </div>
+      </div>
+
+      <hr class="sep" />
+
+      <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
+        <label class="pill" style="cursor:pointer;">
+          <input id="countOnlyBought" type="checkbox" style="margin-right:8px; transform:scale(1.1);" />
+          Считать “Потрачено” только по купленным
+        </label>
+
+        <button id="addTemplateBtn" class="btn-ghost btn">Шаблон “Базовая корзина”</button>
+        <button id="clearBoughtBtn" class="btn-ghost btn">Удалить купленное</button>
+        <button id="resetBtn" class="btn-ghost btn">Сброс</button>
+      </div>
+
+      <hr class="sep" />
+
+      <h3>Добавить товар</h3>
+      <form id="itemForm" class="form-row" style="margin-top:10px;">
+        <input id="nameInput" class="input" type="text" placeholder="Название" maxlength="60" required />
+        <input id="priceInput" class="input" type="number" min="0" step="0.01" placeholder="Цена" required />
+        <select id="categoryInput" class="input">
+          <option value="Еда">Еда</option>
+          <option value="Напитки">Напитки</option>
+          <option value="Быт">Быт</option>
+          <option value="Другое">Другое</option>
+        </select>
+        <input id="storeInput" class="input" type="text" placeholder="Магазин (опц.)" maxlength="40" />
+        <button class="btn" type="submit">Добавить</button>
+      </form>
+
+      <div class="grid" style="grid-template-columns: 1.2fr 1fr 1fr; margin-top:12px;">
+        <div class="card">
+          <h3>Поиск</h3>
+          <input id="searchInput" class="input" type="text" placeholder="введите слово..." />
+        </div>
+        <div class="card">
+          <h3>Сортировка</h3>
+          <select id="sortSelect" class="input">
+            <option value="createdDesc">Сначала новые</option>
+            <option value="createdAsc">Сначала старые</option>
+            <option value="priceAsc">Цена ↑</option>
+            <option value="priceDesc">Цена ↓</option>
+            <option value="nameAsc">Название A→Я</option>
+          </select>
+        </div>
+        <div class="card">
+          <h3>Фильтр</h3>
+          <select id="filterSelect" class="input">
+            <option value="all">Все</option>
+            <option value="need">Нужно купить</option>
+            <option value="bought">Куплено</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:12px;">
+        <h3>Список</h3>
+        <div id="listWrap" style="display:flex; flex-direction:column; gap:10px; margin-top:10px;"></div>
+        <div class="small">Подсказка: нажми на цену товара, чтобы быстро изменить её.</div>
+      </div>
+
+      <div class="card" style="margin-top:12px;">
+        <h3>Экономия</h3>
+        <div id="savingsBox" class="small">Здесь появятся подсказки.</div>
+      </div>
+    </section>
+
+    <footer class="footer">
+      <span>© BudgetCart</span>
+      <span>Сайт статический, работает без интернета (кроме шрифтов — у нас их нет).</span>
+    </footer>
+  </main>
+
+  <script src="assets/site.js"></script>
+  <script src="assets/app.js"></script>
+</body>
+</html>
