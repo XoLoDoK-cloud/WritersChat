@@ -1,6 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url><loc>https://XoLoDoK-cloud.github.io/budgetcart/</loc></url>
-  <url><loc>https://XoLoDoK-cloud.github.io/budgetcart/app.html</loc></url>
-  <url><loc>https://XoLoDoK-cloud.github.io/budgetcart/about.html</loc></url>
+
+  <url>
+    <loc>https://xolodok-cloud.github.io/budgetcart/</loc>
+  </url>
+
+  <url>
+    <loc>https://xolodok-cloud.github.io/budgetcart/app.html</loc>
+  </url>
+
+  <url>
+    <loc>https://xolodok-cloud.github.io/budgetcart/about.html</loc>
+  </url>
+
 </urlset>
