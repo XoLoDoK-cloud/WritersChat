@@ -1,6 +1,7 @@
-// app.js
+// app.js — полный файл под твой index.html
 (() => {
   const LS_KEY = "lit_chat_v1";
+  const API_URL = "http://localhost:3001/chat"; // локальный backend (там хранится ключ OpenAI)
 
   const el = {
     writersList: document.getElementById("writersList"),
@@ -24,36 +25,21 @@
   };
 
   const writers = (window.WRITERS || []).slice();
-
   const state = loadState();
 
-  // ---------- init ----------
-  populateFilters();
-  renderWriters();
-  ensureSelectedWriter();
-  renderChatHeader();
-  renderMessages();
-
-  wireEvents();
-
-  // ---------- state ----------
-  function loadState() {
-    try {
-      const raw = localStorage.getItem(LS_KEY);
-      if (!raw) return defaultState();
-      const parsed = JSON.parse(raw);
-
-      // минимальная валидация
-      if (!parsed || typeof parsed !== "object") return defaultState();
-      if (!parsed.sessions) parsed.sessions = {};
-      if (!parsed.ui) parsed.ui = {};
-
-      return parsed;
-    } catch {
-      return defaultState();
-    }
+  // -------- init --------
+  if (!writers.length) {
+    console.warn("WRITERS пустой. Проверь writers.js (должно быть window.WRITERS = [...])");
   }
 
+  populateFilters();
+  ensureSelectedWriter();
+  renderWriters();
+  renderChatHeader();
+  renderMessages();
+  wireEvents();
+
+  // -------- state --------
   function defaultState() {
     return {
       ui: {
@@ -61,12 +47,35 @@
         search: "",
         era: "",
         genre: "",
-        mode: "normal"
+        mode: "normal",
       },
       sessions: {
         // writerId: { sessionId, messages: [{role, content, ts}] }
-      }
+      },
     };
+  }
+
+  function loadState() {
+    try {
+      const raw = localStorage.getItem(LS_KEY);
+      if (!raw) return defaultState();
+      const parsed = JSON.parse(raw);
+
+      if (!parsed || typeof parsed !== "object") return defaultState();
+      if (!parsed.ui) parsed.ui = {};
+      if (!parsed.sessions) parsed.sessions = {};
+
+      // defaults/migration
+      if (!("selectedWriterId" in parsed.ui)) parsed.ui.selectedWriterId = writers[0]?.id || null;
+      if (!("search" in parsed.ui)) parsed.ui.search = "";
+      if (!("era" in parsed.ui)) parsed.ui.era = "";
+      if (!("genre" in parsed.ui)) parsed.ui.genre = "";
+      if (!("mode" in parsed.ui)) parsed.ui.mode = "normal";
+
+      return parsed;
+    } catch {
+      return defaultState();
+    }
   }
 
   function saveState() {
@@ -74,12 +83,7 @@
   }
 
   function getWriterById(id) {
-    return writers.find(w => w.id === id) || null;
-  }
-
-  function getMode() {
-    const checked = document.querySelector('input[name="mode"]:checked');
-    return checked ? checked.value : "normal";
+    return writers.find((w) => w.id === id) || null;
   }
 
   function ensureSelectedWriter() {
@@ -94,17 +98,31 @@
     if (!state.sessions[writerId]) {
       state.sessions[writerId] = {
         sessionId: crypto.randomUUID(),
-        messages: []
+        messages: [],
       };
       saveState();
     }
     return state.sessions[writerId];
   }
 
-  // ---------- UI ----------
+  function getMode() {
+    const checked = document.querySelector('input[name="mode"]:checked');
+    return checked ? checked.value : state.ui.mode || "normal";
+  }
+
+  // -------- UI: filters & writers list --------
   function populateFilters() {
-    const eras = uniq(writers.map(w => w.era).filter(Boolean)).sort();
-    const genres = uniq(writers.map(w => w.genre).filter(Boolean)).sort();
+    // restore UI values
+    el.searchInput.value = state.ui.search || "";
+    el.eraFilter.value = state.ui.era || "";
+    el.genreFilter.value = state.ui.genre || "";
+
+    // clear selects except first option
+    while (el.eraFilter.options.length > 1) el.eraFilter.remove(1);
+    while (el.genreFilter.options.length > 1) el.genreFilter.remove(1);
+
+    const eras = uniq(writers.map((w) => w.era).filter(Boolean)).sort();
+    const genres = uniq(writers.map((w) => w.genre).filter(Boolean)).sort();
 
     for (const era of eras) {
       const opt = document.createElement("option");
@@ -120,8 +138,6 @@
       el.genreFilter.appendChild(opt);
     }
 
-    // restore UI filters
-    el.searchInput.value = state.ui.search || "";
     el.eraFilter.value = state.ui.era || "";
     el.genreFilter.value = state.ui.genre || "";
 
@@ -136,18 +152,18 @@
     const era = state.ui.era || "";
     const genre = state.ui.genre || "";
 
-    const list = writers
-      .filter(w => !era || w.era === era)
-      .filter(w => !genre || w.genre === genre)
-      .filter(w => {
+    const filtered = writers
+      .filter((w) => !era || w.era === era)
+      .filter((w) => !genre || w.genre === genre)
+      .filter((w) => {
         if (!q) return true;
-        const text = `${w.name} ${w.era} ${w.genre}`.toLowerCase();
-        return text.includes(q);
+        const hay = `${w.name} ${w.era || ""} ${w.genre || ""}`.toLowerCase();
+        return hay.includes(q);
       });
 
     el.writersList.innerHTML = "";
 
-    for (const w of list) {
+    for (const w of filtered) {
       const card = document.createElement("div");
       card.className = "writer-card" + (w.id === state.ui.selectedWriterId ? " active" : "");
       card.dataset.id = w.id;
@@ -156,12 +172,21 @@
         <div class="avatar">${escapeHtml(w.avatar || "📚")}</div>
         <div class="info">
           <div class="name">${escapeHtml(w.name)}</div>
-          <div class="meta">${escapeHtml(w.era || "")} · ${escapeHtml(w.genre || "")}</div>
+          <div class="meta">${escapeHtml(w.era || "")}${w.era && w.genre ? " · " : ""}${escapeHtml(w.genre || "")}</div>
         </div>
       `;
 
       card.addEventListener("click", () => selectWriter(w.id));
       el.writersList.appendChild(card);
+    }
+
+    if (filtered.length === 0) {
+      const empty = document.createElement("div");
+      empty.style.color = "#a8b0c2";
+      empty.style.fontSize = "13px";
+      empty.style.padding = "8px 2px";
+      empty.textContent = "Ничего не найдено по фильтрам.";
+      el.writersList.appendChild(empty);
     }
   }
 
@@ -175,6 +200,7 @@
 
   function renderChatHeader() {
     const w = getWriterById(state.ui.selectedWriterId);
+
     if (!w) {
       el.writerAvatar.textContent = "📚";
       el.writerName.textContent = "Выбери писателя слева";
@@ -196,13 +222,16 @@
     el.messages.innerHTML = "";
 
     if (!w) {
-      el.messages.innerHTML = `<div class="msg ai"><div class="who">ИИ</div>Выбери писателя слева, чтобы начать диалог.</div>`;
+      el.messages.innerHTML =
+        `<div class="msg ai"><div class="who">ИИ</div>Выбери писателя слева, чтобы начать диалог.</div>`;
       return;
     }
 
     const session = getSession(w.id);
+
     if (!session.messages.length) {
-      el.messages.innerHTML = `<div class="msg ai"><div class="who">${escapeHtml(w.name)}</div>Здравствуй. О чём поговорим?</div>`;
+      el.messages.innerHTML =
+        `<div class="msg ai"><div class="who">${escapeHtml(w.name)}</div>Здравствуй. О чём поговорим?</div>`;
       return;
     }
 
@@ -216,11 +245,14 @@
       el.messages.appendChild(msg);
     }
 
-    // автоскролл вниз
+    scrollToBottom();
+  }
+
+  function scrollToBottom() {
     el.messages.scrollTop = el.messages.scrollHeight;
   }
 
-  // ---------- Chat logic ----------
+  // -------- chat --------
   async function sendMessage() {
     const w = getWriterById(state.ui.selectedWriterId);
     const text = (el.messageInput.value || "").trim();
@@ -230,28 +262,28 @@
     state.ui.mode = mode;
 
     const session = getSession(w.id);
+
     session.messages.push({ role: "user", content: text, ts: Date.now() });
     saveState();
 
     el.messageInput.value = "";
     renderMessages();
 
-    // disable send while "thinking"
     setSending(true);
 
     try {
-      // Сейчас заглушка (чтобы UI был готов).
-      // Потом заменим на реальный fetch к вашему серверу/ИИ, как в телеграм-боте.
-      const reply = await getAssistantReplyStub(w, session, mode, text);
-
+      const reply = await getAssistantReply(w, session, mode, text);
       session.messages.push({ role: "assistant", content: reply, ts: Date.now() });
       saveState();
       renderMessages();
     } catch (e) {
       session.messages.push({
         role: "assistant",
-        content: "Ошибка: не удалось получить ответ. Проверь подключение/сервер.",
-        ts: Date.now()
+        content:
+          "Не получилось получить ответ.\n" +
+          "Проверь, что сервер запущен: http://localhost:3001\n\n" +
+          String(e?.message || e),
+        ts: Date.now(),
       });
       saveState();
       renderMessages();
@@ -266,31 +298,38 @@
     el.btnSend.textContent = sending ? "..." : "Отправить";
   }
 
-  // Заглушка ответа — в следующем шаге поменяем на реальный ИИ
-  async function getAssistantReplyStub(writer, session, mode, lastUserText) {
-    await sleep(350);
+  async function getAssistantReply(writer, session, mode, lastUserText) {
+    // Берём последние сообщения, чтобы не гонять слишком много контекста
+    const history = session.messages.slice(-16).map((m) => ({
+      role: m.role,
+      content: m.content,
+    }));
 
-    const modeHint =
-      mode === "short" ? "Ответь кратко." :
-      mode === "teacher" ? "Объясняй как учитель литературы." :
-      mode === "novel" ? "Пиши как художественный диалог в романе." :
-      "Обычный режим.";
+    const res = await fetch(API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        writerSystem: writer.system, // system prompt из writers.js
+        mode,
+        message: lastUserText,
+        history,
+      }),
+    });
 
-    // Небольшая имитация "стиля"
-    const signature =
-      writer.id === "pushkin" ? "— право, забавно…" :
-      writer.id === "dostoevsky" ? "…и в этом есть тревога." :
-      writer.id === "tolstoy" ? "…всё упирается в нравственный выбор." :
-      writer.id === "chekhov" ? "…короче говоря." :
-      "…";
+    if (!res.ok) {
+      const t = await res.text();
+      throw new Error(t);
+    }
 
-    return `${modeHint}\n\nЯ услышал тебя: «${lastUserText}»\n${signature}\n\n(Пока это тестовый ответ. Следующим шагом подключим реальный ИИ как в вашем боте.)`;
+    const data = await res.json();
+    return data.text || "(пустой ответ)";
   }
 
-  // ---------- actions ----------
+  // -------- actions --------
   function clearChat() {
     const w = getWriterById(state.ui.selectedWriterId);
     if (!w) return;
+
     const session = getSession(w.id);
     session.messages = [];
     saveState();
@@ -300,10 +339,24 @@
   function newSession() {
     const w = getWriterById(state.ui.selectedWriterId);
     if (!w) return;
+
     state.sessions[w.id] = { sessionId: crypto.randomUUID(), messages: [] };
     saveState();
     renderChatHeader();
     renderMessages();
+  }
+
+  function exportData() {
+    const payload = { exportedAt: new Date().toISOString(), state };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "lit_chat_export.json";
+    a.click();
+
+    URL.revokeObjectURL(url);
   }
 
   function clearAll() {
@@ -311,23 +364,10 @@
     location.reload();
   }
 
-  function exportData() {
-    const payload = {
-      exportedAt: new Date().toISOString(),
-      state
-    };
-    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "lit_chat_export.json";
-    a.click();
-    URL.revokeObjectURL(url);
-  }
-
-  // ---------- events ----------
+  // -------- events --------
   function wireEvents() {
     el.btnSend.addEventListener("click", sendMessage);
+
     el.messageInput.addEventListener("keydown", (e) => {
       if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault();
@@ -353,7 +393,7 @@
       renderWriters();
     });
 
-    document.querySelectorAll('input[name="mode"]').forEach(r => {
+    document.querySelectorAll('input[name="mode"]').forEach((r) => {
       r.addEventListener("change", () => {
         state.ui.mode = getMode();
         saveState();
@@ -366,9 +406,10 @@
     el.btnClearAll.addEventListener("click", clearAll);
   }
 
-  // ---------- helpers ----------
-  function uniq(arr) { return [...new Set(arr)]; }
-  function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+  // -------- helpers --------
+  function uniq(arr) {
+    return [...new Set(arr)];
+  }
 
   function escapeHtml(s) {
     return String(s ?? "")
