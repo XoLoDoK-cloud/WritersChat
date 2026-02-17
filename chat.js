@@ -1,424 +1,409 @@
-const STORAGE_KEY = "budgetcart_v1";
+// chat.js — полный файл
+(() => {
+  const LS_KEY = "lit_chat_v1";
+  const API_URL = "http://localhost:3001/chat"; // ЛОКАЛЬНЫЙ СЕРВЕР (ключ OpenAI хранится там)
 
-const els = {
-  budgetInput: document.getElementById("budgetInput"),
-  spentValue: document.getElementById("spentValue"),
-  leftValue: document.getElementById("leftValue"),
-  statusBadge: document.getElementById("statusBadge"),
-  countOnlyBought: document.getElementById("countOnlyBought"),
+  const el = {
+    writersList: document.getElementById("writersList"),
+    searchInput: document.getElementById("searchInput"),
+    eraFilter: document.getElementById("eraFilter"),
+    genreFilter: document.getElementById("genreFilter"),
 
-  itemForm: document.getElementById("itemForm"),
-  nameInput: document.getElementById("nameInput"),
-  priceInput: document.getElementById("priceInput"),
-  categoryInput: document.getElementById("categoryInput"),
-  storeInput: document.getElementById("storeInput"),
+    writerAvatar: document.getElementById("writerAvatar"),
+    writerName: document.getElementById("writerName"),
+    writerMeta: document.getElementById("writerMeta"),
+    sessionId: document.getElementById("sessionId"),
 
-  searchInput: document.getElementById("searchInput"),
-  sortSelect: document.getElementById("sortSelect"),
-  filterSelect: document.getElementById("filterSelect"),
-  groupSelect: document.getElementById("groupSelect"),
+    messages: document.getElementById("messages"),
+    messageInput: document.getElementById("messageInput"),
+    btnSend: document.getElementById("btnSend"),
 
-  listWrap: document.getElementById("listWrap"),
-  savingsBox: document.getElementById("savingsBox"),
+    btnClearChat: document.getElementById("btnClearChat"),
+    btnNewSession: document.getElementById("btnNewSession"),
+    btnExport: document.getElementById("btnExport"),
+    btnClearAll: document.getElementById("btnClearAll"),
+  };
 
-  addTemplateBtn: document.getElementById("addTemplateBtn"),
-  clearBoughtBtn: document.getElementById("clearBoughtBtn"),
-  resetBtn: document.getElementById("resetBtn"),
-};
+  const writers = (window.WRITERS || []).slice();
+  const state = loadState();
 
-function uid(){ return Math.random().toString(16).slice(2) + Date.now().toString(16); }
-function money(n){ return Number(n || 0).toFixed(2) + " £"; }
-function normalize(str){ return (str || "").trim().toLowerCase(); }
-function safeNumber(v){ const n = Number(v); return Number.isFinite(n) ? n : 0; }
+  // ---------- init ----------
+  populateFilters();
+  renderWriters();
+  ensureSelectedWriter();
+  renderChatHeader();
+  renderMessages();
+  wireEvents();
 
-const defaultState = {
-  budget: 0,
-  countOnlyBought: false,
-  items: [],
-  ui: { search:"", sort:"createdDesc", filter:"all", group:"category" }
-};
-
-let state = load();
-
-function load(){
-  try{
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if(!raw) return structuredClone(defaultState);
-    const parsed = JSON.parse(raw);
+  // ---------- state ----------
+  function defaultState() {
     return {
-      ...structuredClone(defaultState),
-      ...parsed,
-      items: Array.isArray(parsed.items) ? parsed.items : [],
-      ui: { ...structuredClone(defaultState.ui), ...(parsed.ui || {}) }
+      ui: {
+        selectedWriterId: writers[0]?.id || null,
+        search: "",
+        era: "",
+        genre: "",
+        mode: "normal"
+      },
+      sessions: {
+        // writerId: { sessionId, messages: [{role, content, ts}] }
+      }
     };
-  }catch{
-    return structuredClone(defaultState);
-  }
-}
-function save(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
-
-function setBadge(text, mode){
-  els.statusBadge.textContent = text;
-  els.statusBadge.style.borderColor =
-    mode==="bad" ? "rgba(255,80,80,.35)" :
-    mode==="warn"? "rgba(255,200,0,.35)" :
-    "rgba(255,255,255,.10)";
-  els.statusBadge.style.background =
-    mode==="bad" ? "rgba(255,80,80,.10)" :
-    mode==="warn"? "rgba(255,200,0,.10)" :
-    "rgba(255,255,255,.03)";
-  els.statusBadge.style.color =
-    mode==="bad" ? "#ffd1d1" :
-    mode==="warn"? "#ffe9a6" :
-    "#9fb0c8";
-}
-
-function getSpent(){
-  const onlyBought = state.countOnlyBought;
-  return state.items.reduce((sum,it)=>{
-    if(onlyBought && !it.bought) return sum;
-    return sum + safeNumber(it.price);
-  },0);
-}
-
-function compute(){
-  const budget = safeNumber(state.budget);
-  const spent = getSpent();
-  const left = budget - spent;
-
-  els.spentValue.textContent = money(spent);
-  els.leftValue.textContent = money(left);
-
-  if (budget <= 0) setBadge("Укажи бюджет", "warn");
-  else if (left < 0) setBadge("Превышение бюджета", "bad");
-  else if (left <= budget * 0.15) setBadge("Почти на нуле", "warn");
-  else setBadge("В пределах бюджета", "ok");
-
-  renderSavings(budget);
-}
-
-function addItem({name, price, category, store}){
-  const item = {
-    id: uid(),
-    name: name.trim(),
-    price: safeNumber(price),
-    category: category || "Другое",
-    store: (store || "").trim(),
-    bought: false,
-    createdAt: Date.now(),
-  };
-  state.items.unshift(item);
-  save();
-  render();
-}
-
-function updateItem(id, patch){
-  const idx = state.items.findIndex(x=>x.id===id);
-  if(idx === -1) return;
-  state.items[idx] = { ...state.items[idx], ...patch };
-  save();
-  render();
-}
-function deleteItem(id){
-  state.items = state.items.filter(x=>x.id!==id);
-  save();
-  render();
-}
-function clearBought(){
-  state.items = state.items.filter(x=>!x.bought);
-  save();
-  render();
-}
-
-function addTemplate(){
-  const template = [
-    { name:"Хлеб", price:1.20, category:"Еда", store:"" },
-    { name:"Молоко", price:1.50, category:"Напитки", store:"" },
-    { name:"Яйца", price:2.10, category:"Еда", store:"" },
-    { name:"Макароны", price:1.00, category:"Еда", store:"" },
-    { name:"Курица", price:4.50, category:"Еда", store:"" },
-    { name:"Чай", price:2.20, category:"Напитки", store:"" },
-    { name:"Гель для посуды", price:2.30, category:"Быт", store:"" },
-  ];
-  template.reverse().forEach(t=>addItem(t));
-}
-
-function applyUIFromState(){
-  els.budgetInput.value = state.budget || "";
-  els.countOnlyBought.checked = !!state.countOnlyBought;
-
-  els.searchInput.value = state.ui.search || "";
-  els.sortSelect.value = state.ui.sort || "createdDesc";
-  els.filterSelect.value = state.ui.filter || "all";
-  els.groupSelect.value = state.ui.group || "category";
-}
-
-function getFilteredSortedItems(){
-  const q = normalize(state.ui.search);
-  const filter = state.ui.filter;
-
-  let items = [...state.items];
-
-  if(q){
-    items = items.filter(it=>{
-      const hay = normalize(`${it.name} ${it.category} ${it.store}`);
-      return hay.includes(q);
-    });
-  }
-  if(filter==="need") items = items.filter(it=>!it.bought);
-  if(filter==="bought") items = items.filter(it=>it.bought);
-
-  const sort = state.ui.sort;
-  items.sort((a,b)=>{
-    if(sort==="createdDesc") return b.createdAt - a.createdAt;
-    if(sort==="createdAsc") return a.createdAt - b.createdAt;
-    if(sort==="priceAsc") return safeNumber(a.price) - safeNumber(b.price);
-    if(sort==="priceDesc") return safeNumber(b.price) - safeNumber(a.price);
-    if(sort==="nameAsc") return a.name.localeCompare(b.name, "ru");
-    return 0;
-  });
-
-  return items;
-}
-
-function groupItems(items){
-  const mode = state.ui.group;
-  if(mode==="none") return [{ key:"Все", items }];
-
-  const getKey = (it)=>{
-    if(mode==="store") return it.store ? it.store : "Без магазина";
-    return it.category || "Другое";
-  };
-
-  const map = new Map();
-  for(const it of items){
-    const k = getKey(it);
-    if(!map.has(k)) map.set(k, []);
-    map.get(k).push(it);
   }
 
-  return [...map.entries()]
-    .sort((a,b)=>a[0].localeCompare(b[0], "ru"))
-    .map(([key, arr])=>({ key, items: arr }));
-}
+  function loadState() {
+    try {
+      const raw = localStorage.getItem(LS_KEY);
+      if (!raw) return defaultState();
+      const parsed = JSON.parse(raw);
 
-function renderItem(it){
-  const wrap = document.createElement("div");
-  wrap.className = "item" + (it.bought ? " bought" : "");
+      if (!parsed || typeof parsed !== "object") return defaultState();
+      if (!parsed.sessions) parsed.sessions = {};
+      if (!parsed.ui) parsed.ui = {};
 
-  const checkbox = document.createElement("input");
-  checkbox.type = "checkbox";
-  checkbox.className = "checkbox";
-  checkbox.checked = !!it.bought;
-  checkbox.addEventListener("change", ()=>updateItem(it.id, { bought: checkbox.checked }));
+      // миграция/дефолты
+      if (!parsed.ui.mode) parsed.ui.mode = "normal";
+      if (!("search" in parsed.ui)) parsed.ui.search = "";
+      if (!("era" in parsed.ui)) parsed.ui.era = "";
+      if (!("genre" in parsed.ui)) parsed.ui.genre = "";
 
-  const main = document.createElement("div");
-  main.className = "item-main";
-
-  const top = document.createElement("div");
-  top.className = "item-top";
-
-  const name = document.createElement("div");
-  name.className = "item-name";
-  name.textContent = it.name;
-
-  const price = document.createElement("div");
-  price.className = "price";
-  price.textContent = money(it.price);
-  price.title = "Нажми, чтобы изменить цену";
-  price.addEventListener("click", ()=>{
-    const next = prompt("Новая цена:", String(it.price));
-    if(next === null) return;
-    updateItem(it.id, { price: safeNumber(next) });
-  });
-
-  top.appendChild(name);
-  top.appendChild(price);
-
-  const meta = document.createElement("div");
-  meta.className = "item-meta";
-
-  const cat = document.createElement("span");
-  cat.className = "pill";
-  cat.textContent = it.category;
-  meta.appendChild(cat);
-
-  if(it.store){
-    const st = document.createElement("span");
-    st.className = "pill";
-    st.textContent = it.store;
-    meta.appendChild(st);
-  }
-
-  main.appendChild(top);
-  main.appendChild(meta);
-
-  const actions = document.createElement("div");
-  actions.className = "item-actions";
-
-  const editBtn = document.createElement("button");
-  editBtn.className = "icon-btn";
-  editBtn.textContent = "✎";
-  editBtn.title = "Переименовать";
-  editBtn.addEventListener("click", ()=>{
-    const nextName = prompt("Новое название:", it.name);
-    if(nextName === null) return;
-    const trimmed = nextName.trim();
-    if(!trimmed) return;
-    updateItem(it.id, { name: trimmed });
-  });
-
-  const delBtn = document.createElement("button");
-  delBtn.className = "icon-btn";
-  delBtn.textContent = "🗑";
-  delBtn.title = "Удалить";
-  delBtn.addEventListener("click", ()=>deleteItem(it.id));
-
-  actions.appendChild(editBtn);
-  actions.appendChild(delBtn);
-
-  wrap.appendChild(checkbox);
-  wrap.appendChild(main);
-  wrap.appendChild(actions);
-
-  return wrap;
-}
-
-function renderList(){
-  els.listWrap.innerHTML = "";
-  const items = getFilteredSortedItems();
-
-  if(items.length===0){
-    const empty = document.createElement("div");
-    empty.className = "hint";
-    empty.textContent = "Пока пусто. Добавь первый товар выше 🙂";
-    els.listWrap.appendChild(empty);
-    return;
-  }
-
-  const groups = groupItems(items);
-  for(const g of groups){
-    if(state.ui.group!=="none"){
-      const title = document.createElement("div");
-      title.className = "group-title";
-      title.textContent = g.key;
-      els.listWrap.appendChild(title);
+      return parsed;
+    } catch {
+      return defaultState();
     }
-    for(const it of g.items) els.listWrap.appendChild(renderItem(it));
-  }
-}
-
-function renderSavings(budget){
-  els.savingsBox.innerHTML = "";
-  if(budget<=0){
-    els.savingsBox.textContent = "Укажи бюджет — тогда смогу подсказать, где перерасход.";
-    return;
   }
 
-  const totalAll = state.items.reduce((s,it)=>s + safeNumber(it.price), 0);
-  const over = totalAll - budget;
-
-  const row = (title, value)=>{
-    const d = document.createElement("div");
-    d.className="row";
-    const t = document.createElement("div");
-    t.className="title";
-    t.textContent=title;
-    const v = document.createElement("div");
-    v.className="value";
-    v.textContent=value;
-    d.appendChild(t);
-    d.appendChild(v);
-    return d;
-  };
-
-  els.savingsBox.appendChild(row("Сумма всех товаров", money(totalAll)));
-  els.savingsBox.appendChild(row("Бюджет", money(budget)));
-
-  if(over<=0){
-    els.savingsBox.appendChild(row("Перерасход", money(0)));
-    const tip = document.createElement("div");
-    tip.className="hint";
-    tip.style.marginTop="10px";
-    tip.textContent="Ты в бюджете. Отмечай покупки — и сайт покажет реальную сумму.";
-    els.savingsBox.appendChild(tip);
-    return;
+  function saveState() {
+    localStorage.setItem(LS_KEY, JSON.stringify(state));
   }
 
-  els.savingsBox.appendChild(row("Перерасход", money(over)));
-
-  const top = [...state.items].sort((a,b)=>safeNumber(b.price)-safeNumber(a.price)).slice(0,3);
-  const tip = document.createElement("div");
-  tip.className="hint";
-  tip.style.marginTop="10px";
-  tip.textContent="Начни экономию с самых дорогих позиций:";
-  els.savingsBox.appendChild(tip);
-
-  for(const it of top){
-    els.savingsBox.appendChild(row(it.name, money(it.price)));
+  function getWriterById(id) {
+    return writers.find(w => w.id === id) || null;
   }
-}
 
-function render(){
-  applyUIFromState();
-  renderList();
-  compute();
-}
+  function uniq(arr) {
+    return [...new Set(arr)];
+  }
 
-function bind(){
-  els.budgetInput.addEventListener("input", ()=>{
-    state.budget = safeNumber(els.budgetInput.value);
-    save();
-    compute();
-  });
+  function ensureSelectedWriter() {
+    if (!state.ui.selectedWriterId && writers[0]) state.ui.selectedWriterId = writers[0].id;
+    if (state.ui.selectedWriterId && !getWriterById(state.ui.selectedWriterId)) {
+      state.ui.selectedWriterId = writers[0]?.id || null;
+    }
+    saveState();
+  }
 
-  els.countOnlyBought.addEventListener("change", ()=>{
-    state.countOnlyBought = !!els.countOnlyBought.checked;
-    save();
-    compute();
-  });
+  function getMode() {
+    const checked = document.querySelector('input[name="mode"]:checked');
+    return checked ? checked.value : (state.ui.mode || "normal");
+  }
 
-  els.itemForm.addEventListener("submit", (e)=>{
-    e.preventDefault();
-    const name = els.nameInput.value.trim();
-    const price = safeNumber(els.priceInput.value);
-    const category = els.categoryInput.value;
-    const store = els.storeInput.value;
-    if(!name) return;
+  function getSession(writerId) {
+    if (!state.sessions[writerId]) {
+      state.sessions[writerId] = {
+        sessionId: crypto.randomUUID(),
+        messages: []
+      };
+      saveState();
+    }
+    return state.sessions[writerId];
+  }
 
-    addItem({ name, price, category, store });
+  // ---------- UI ----------
+  function populateFilters() {
+    // восстановить значения до наполнения списков
+    el.searchInput.value = state.ui.search || "";
+    el.eraFilter.value = state.ui.era || "";
+    el.genreFilter.value = state.ui.genre || "";
 
-    els.nameInput.value="";
-    els.priceInput.value="";
-    els.storeInput.value="";
-    els.nameInput.focus();
-  });
+    // заполнить эпохи/жанры
+    const eras = uniq(writers.map(w => w.era).filter(Boolean)).sort();
+    const genres = uniq(writers.map(w => w.genre).filter(Boolean)).sort();
 
-  const uiHandler = ()=>{
-    state.ui.search = els.searchInput.value;
-    state.ui.sort = els.sortSelect.value;
-    state.ui.filter = els.filterSelect.value;
-    state.ui.group = els.groupSelect.value;
-    save();
-    render();
-  };
+    // очистим (кроме первой опции)
+    while (el.eraFilter.options.length > 1) el.eraFilter.remove(1);
+    while (el.genreFilter.options.length > 1) el.genreFilter.remove(1);
 
-  els.searchInput.addEventListener("input", uiHandler);
-  els.sortSelect.addEventListener("change", uiHandler);
-  els.filterSelect.addEventListener("change", uiHandler);
-  els.groupSelect.addEventListener("change", uiHandler);
+    for (const era of eras) {
+      const opt = document.createElement("option");
+      opt.value = era;
+      opt.textContent = `Эпоха: ${era}`;
+      el.eraFilter.appendChild(opt);
+    }
+    for (const g of genres) {
+      const opt = document.createElement("option");
+      opt.value = g;
+      opt.textContent = `Жанр: ${g}`;
+      el.genreFilter.appendChild(opt);
+    }
 
-  els.addTemplateBtn.addEventListener("click", ()=>addTemplate());
-  els.clearBoughtBtn.addEventListener("click", ()=>clearBought());
+    // применим сохранённые фильтры
+    el.eraFilter.value = state.ui.era || "";
+    el.genreFilter.value = state.ui.genre || "";
 
-  els.resetBtn.addEventListener("click", ()=>{
-    const ok = confirm("Точно сбросить всё? Бюджет и список удалятся.");
-    if(!ok) return;
-    state = structuredClone(defaultState);
-    save();
-    render();
-  });
-}
+    // режим
+    const mode = state.ui.mode || "normal";
+    const radio = document.querySelector(`input[name="mode"][value="${mode}"]`);
+    if (radio) radio.checked = true;
+  }
 
-bind();
-render();
+  function renderWriters() {
+    const q = (state.ui.search || "").trim().toLowerCase();
+    const era = state.ui.era || "";
+    const genre = state.ui.genre || "";
+
+    const list = writers
+      .filter(w => !era || w.era === era)
+      .filter(w => !genre || w.genre === genre)
+      .filter(w => {
+        if (!q) return true;
+        const text = `${w.name} ${w.era || ""} ${w.genre || ""}`.toLowerCase();
+        return text.includes(q);
+      });
+
+    el.writersList.innerHTML = "";
+
+    for (const w of list) {
+      const card = document.createElement("div");
+      card.className = "writer-card" + (w.id === state.ui.selectedWriterId ? " active" : "");
+      card.dataset.id = w.id;
+
+      card.innerHTML = `
+        <div class="avatar">${escapeHtml(w.avatar || "📚")}</div>
+        <div class="info">
+          <div class="name">${escapeHtml(w.name)}</div>
+          <div class="meta">${escapeHtml(w.era || "")}${w.era && w.genre ? " · " : ""}${escapeHtml(w.genre || "")}</div>
+        </div>
+      `;
+
+      card.addEventListener("click", () => selectWriter(w.id));
+      el.writersList.appendChild(card);
+    }
+
+    if (list.length === 0) {
+      const empty = document.createElement("div");
+      empty.style.color = "#a8b0c2";
+      empty.style.fontSize = "13px";
+      empty.style.padding = "8px 2px";
+      empty.textContent = "Ничего не найдено по фильтрам.";
+      el.writersList.appendChild(empty);
+    }
+  }
+
+  function selectWriter(writerId) {
+    state.ui.selectedWriterId = writerId;
+    saveState();
+    renderWriters();
+    renderChatHeader();
+    renderMessages();
+  }
+
+  function renderChatHeader() {
+    const w = getWriterById(state.ui.selectedWriterId);
+    if (!w) {
+      el.writerAvatar.textContent = "📚";
+      el.writerName.textContent = "Выбери писателя слева";
+      el.writerMeta.textContent = "…";
+      el.sessionId.textContent = "—";
+      return;
+    }
+
+    const session = getSession(w.id);
+    el.writerAvatar.textContent = w.avatar || "📚";
+    el.writerName.textContent = w.name;
+    el.writerMeta.textContent = `${w.era || ""}${w.era && w.genre ? " · " : ""}${w.genre || ""}`;
+    el.sessionId.textContent = session.sessionId.slice(0, 8);
+  }
+
+  function renderMessages() {
+    const w = getWriterById(state.ui.selectedWriterId);
+    el.messages.innerHTML = "";
+
+    if (!w) {
+      el.messages.innerHTML = `<div class="msg ai"><div class="who">ИИ</div>Выбери писателя слева, чтобы начать диалог.</div>`;
+      return;
+    }
+
+    const session = getSession(w.id);
+
+    if (!session.messages.length) {
+      el.messages.innerHTML = `<div class="msg ai"><div class="who">${escapeHtml(w.name)}</div>Здравствуй. О чём поговорим?</div>`;
+      return;
+    }
+
+    for (const m of session.messages) {
+      const msg = document.createElement("div");
+      msg.className = "msg " + (m.role === "user" ? "user" : "ai");
+      msg.innerHTML = `
+        <div class="who">${escapeHtml(m.role === "user" ? "Ты" : w.name)}</div>
+        <div>${escapeHtml(m.content)}</div>
+      `;
+      el.messages.appendChild(msg);
+    }
+
+    scrollToBottom();
+  }
+
+  function scrollToBottom() {
+    el.messages.scrollTop = el.messages.scrollHeight;
+  }
+
+  // ---------- chat ----------
+  async function sendMessage() {
+    const w = getWriterById(state.ui.selectedWriterId);
+    const text = (el.messageInput.value || "").trim();
+    if (!w || !text) return;
+
+    const mode = getMode();
+    state.ui.mode = mode;
+
+    const session = getSession(w.id);
+
+    session.messages.push({ role: "user", content: text, ts: Date.now() });
+    saveState();
+
+    el.messageInput.value = "";
+    renderMessages();
+    setSending(true);
+
+    try {
+      const reply = await getAssistantReply(w, session, mode, text);
+      session.messages.push({ role: "assistant", content: reply, ts: Date.now() });
+      saveState();
+      renderMessages();
+    } catch (e) {
+      session.messages.push({
+        role: "assistant",
+        content: `Ошибка: не удалось получить ответ.\n${String(e?.message || e)}`,
+        ts: Date.now()
+      });
+      saveState();
+      renderMessages();
+    } finally {
+      setSending(false);
+    }
+  }
+
+  function setSending(sending) {
+    el.btnSend.disabled = sending;
+    el.messageInput.disabled = sending;
+    el.btnSend.textContent = sending ? "..." : "Отправить";
+  }
+
+  // ВАЖНО: тут вместо заглушки — реальный вызов локального backend
+  async function getAssistantReply(writer, session, mode, lastUserText) {
+    // ограничим историю, чтобы не гонять слишком много
+    const history = session.messages.slice(-16).map(m => ({
+      role: m.role,
+      content: m.content
+    }));
+
+    const res = await fetch(API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        writerSystem: writer.system,
+        mode,
+        message: lastUserText,
+        history
+      })
+    });
+
+    if (!res.ok) {
+      const t = await res.text();
+      throw new Error(t);
+    }
+    const data = await res.json();
+    return data.text || "(пустой ответ)";
+  }
+
+  // ---------- actions ----------
+  function clearChat() {
+    const w = getWriterById(state.ui.selectedWriterId);
+    if (!w) return;
+    const session = getSession(w.id);
+    session.messages = [];
+    saveState();
+    renderMessages();
+  }
+
+  function newSession() {
+    const w = getWriterById(state.ui.selectedWriterId);
+    if (!w) return;
+    state.sessions[w.id] = { sessionId: crypto.randomUUID(), messages: [] };
+    saveState();
+    renderChatHeader();
+    renderMessages();
+  }
+
+  function clearAll() {
+    localStorage.removeItem(LS_KEY);
+    location.reload();
+  }
+
+  function exportData() {
+    const payload = {
+      exportedAt: new Date().toISOString(),
+      state
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "lit_chat_export.json";
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  // ---------- events ----------
+  function wireEvents() {
+    el.btnSend.addEventListener("click", sendMessage);
+
+    el.messageInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+      }
+    });
+
+    el.searchInput.addEventListener("input", () => {
+      state.ui.search = el.searchInput.value;
+      saveState();
+      renderWriters();
+    });
+
+    el.eraFilter.addEventListener("change", () => {
+      state.ui.era = el.eraFilter.value;
+      saveState();
+      renderWriters();
+    });
+
+    el.genreFilter.addEventListener("change", () => {
+      state.ui.genre = el.genreFilter.value;
+      saveState();
+      renderWriters();
+    });
+
+    document.querySelectorAll('input[name="mode"]').forEach(r => {
+      r.addEventListener("change", () => {
+        state.ui.mode = getMode();
+        saveState();
+      });
+    });
+
+    el.btnClearChat.addEventListener("click", clearChat);
+    el.btnNewSession.addEventListener("click", newSession);
+    el.btnExport.addEventListener("click", exportData);
+    el.btnClearAll.addEventListener("click", clearAll);
+  }
+
+  // ---------- helpers ----------
+  function escapeHtml(s) {
+    return String(s ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+  }
+})();
