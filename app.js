@@ -1,7 +1,7 @@
 // app.js — полный файл под твой index.html
 (() => {
   const LS_KEY = "lit_chat_v1";
-  const API_URL = "http://localhost:3001/chat"; // локальный backend (там хранится ключ OpenAI)
+  const API_URL = "http://crimson-dust-9407.lucky-kuvol.workers.dev"; // локальный backend (там хранится ключ OpenAI)
 
   const el = {
     writersList: document.getElementById("writersList"),
