@@ -1,113 +1,107 @@
 <!doctype html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>BudgetCart — умный список покупок по бюджету</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Литературный чат</title>
   <link rel="stylesheet" href="style.css" />
 </head>
+
 <body>
   <header class="topbar">
-    <a class="brand" href="index.html">
-      <span class="brand-mark">BC</span>
-      <span class="brand-text">BudgetCart</span>
-    </a>
+    <div class="brand">
+      <div class="logo">📚</div>
+      <div>
+        <div class="brand-title">Литературный чат</div>
+        <div class="brand-sub">Выбор писателя слева — диалог справа</div>
+      </div>
+    </div>
 
-    <button class="burger" id="burgerBtn" aria-label="Открыть меню">☰</button>
-
-    <nav class="nav" id="nav">
-      <a href="index.html" class="active">Главная</a>
-      <a href="app.html">Приложение</a>
-      <a href="about.html">О проекте</a>
-    </nav>
-
-    <a class="btn small" href="app.html">Открыть приложение</a>
+    <div class="topbar-actions">
+      <button id="btnExport" class="btn">Экспорт</button>
+      <button id="btnClearAll" class="btn btn-danger">Сбросить всё</button>
+    </div>
   </header>
 
-  <main class="page">
-    <section class="hero">
-      <div class="hero-text">
-        <h1>Покупай по плану, а не по настроению.</h1>
-        <p class="lead">
-          <b>BudgetCart</b> помогает уложиться в бюджет: веди список покупок,
-          отмечай купленное, смотри сколько осталось и где перерасход.
-        </p>
+  <div class="layout">
+    <!-- LEFT: writers & functions -->
+    <aside class="sidebar">
+      <div class="panel">
+        <div class="panel-title">Писатели</div>
 
-        <div class="hero-actions">
-          <a class="btn" href="app.html">Начать</a>
-          <a class="btn ghost" href="#features">Что умеет</a>
+        <input id="searchInput" class="input" placeholder="Поиск (Пушкин, XIX век, роман...)" />
+
+        <div class="filters">
+          <select id="eraFilter" class="select">
+            <option value="">Эпоха: любая</option>
+          </select>
+
+          <select id="genreFilter" class="select">
+            <option value="">Жанр: любой</option>
+          </select>
         </div>
 
-        <div class="badges">
-          <span class="chip">Без регистрации</span>
-          <span class="chip">Сохраняется на устройстве</span>
-          <span class="chip">Работает офлайн (локально)</span>
-        </div>
+        <div id="writersList" class="writers-list"></div>
       </div>
 
-      <div class="hero-card">
-        <div class="mini">
-          <div class="mini-row">
-            <div class="mini-title">Бюджет</div>
-            <div class="mini-val">20.00 £</div>
+      <div class="panel">
+        <div class="panel-title">Режим общения</div>
+        <div class="modes">
+          <label class="radio">
+            <input type="radio" name="mode" value="normal" checked />
+            <span>Обычный</span>
+          </label>
+          <label class="radio">
+            <input type="radio" name="mode" value="short" />
+            <span>Кратко</span>
+          </label>
+          <label class="radio">
+            <input type="radio" name="mode" value="teacher" />
+            <span>Как учитель</span>
+          </label>
+          <label class="radio">
+            <input type="radio" name="mode" value="novel" />
+            <span>Как в романе</span>
+          </label>
+        </div>
+
+        <div class="sidebar-actions">
+          <button id="btnClearChat" class="btn">Очистить чат</button>
+          <button id="btnNewSession" class="btn">Новая сессия</button>
+        </div>
+
+        <div class="hint">
+          История сохраняется в браузере (localStorage), как в BudgetCart.
+        </div>
+      </div>
+    </aside>
+
+    <!-- RIGHT: chat -->
+    <main class="chat">
+      <div class="chat-header">
+        <div class="chat-writer">
+          <div id="writerAvatar" class="writer-avatar">📚</div>
+          <div>
+            <div id="writerName" class="writer-name">Выбери писателя слева</div>
+            <div id="writerMeta" class="writer-meta">…</div>
           </div>
-          <div class="mini-row">
-            <div class="mini-title">Потрачено</div>
-            <div class="mini-val">12.40 £</div>
-          </div>
-          <div class="mini-row">
-            <div class="mini-title">Осталось</div>
-            <div class="mini-val ok">7.60 £</div>
-          </div>
-          <div class="mini-note">Всё считается автоматически</div>
+        </div>
+
+        <div class="chat-session">
+          <div class="chip">session: <span id="sessionId">—</span></div>
         </div>
       </div>
-    </section>
 
-    <section id="features" class="section">
-      <h2>Возможности</h2>
-      <div class="grid3">
-        <div class="card">
-          <h3>Бюджет и остаток</h3>
-          <p>Вводишь бюджет — сайт показывает потрачено и сколько осталось.</p>
-        </div>
-        <div class="card">
-          <h3>Список покупок</h3>
-          <p>Добавляй товары, отмечай купленные, удаляй, редактируй цену.</p>
-        </div>
-        <div class="card">
-          <h3>Фильтры и сортировка</h3>
-          <p>Поиск, сортировка по цене/названию и фильтр “нужно/куплено”.</p>
-        </div>
-        <div class="card">
-          <h3>Группировка</h3>
-          <p>Список можно группировать по категориям или магазинам.</p>
-        </div>
-        <div class="card">
-          <h3>Подсказки экономии</h3>
-          <p>Если перерасход — показывает самые дорогие позиции для оптимизации.</p>
-        </div>
-        <div class="card">
-          <h3>Сохранение</h3>
-          <p>Данные сохраняются в браузере (localStorage). Ничего не теряется.</p>
-        </div>
+      <div id="messages" class="messages"></div>
+
+      <div class="composer">
+        <textarea id="messageInput" class="textarea" rows="2" placeholder="Напиши сообщение..."></textarea>
+        <button id="btnSend" class="btn btn-primary">Отправить</button>
       </div>
-    </section>
+    </main>
+  </div>
 
-    <section class="section cta">
-      <div>
-        <h2>Готов начать?</h2>
-        <p class="lead">Открой приложение и собери свою корзину по бюджету.</p>
-      </div>
-      <a class="btn" href="app.html">Перейти в BudgetCart</a>
-    </section>
-  </main>
-
-  <footer class="footer">
-    <div>© BudgetCart</div>
-    <div class="muted">Учебный проект — сайт + приложение</div>
-  </footer>
-
-  <script src="site.js"></script>
+  <script src="writers.js"></script>
+  <script src="app.js"></script>
 </body>
 </html>
